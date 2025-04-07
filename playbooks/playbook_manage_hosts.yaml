@@ -1,0 +1,350 @@
+# code: language=ansible
+- name: Playbook for my hosts
+  hosts: archhosts
+  become: true
+  gather_facts: true
+  tasks:
+
+    - name: "Print facts"
+      ansible.builtin.debug:
+        var: ansible_facts
+      tags:
+        - get_facts
+
+    - name: Write hosts file
+      ansible.builtin.template:
+        src: ../assets/etc__hosts.jinja
+        dest: /etc/hosts
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - hosts_file
+
+    - name: Update pacman
+      community.general.pacman:
+        update_cache: true
+        upgrade: false
+      tags:
+        - pacman_update
+
+    - name: Write sudo.conf file
+      ansible.builtin.template:
+        src: ../assets/etc__sudo.conf
+        dest: /etc/sudo.conf
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - sudo_conf
+
+    # works for AUR too:
+    - name: Install check_missing_pacman_packages script
+      ansible.builtin.template:
+        src: ../assets/check_missing_pacman_packages
+        dest: /usr/bin/check_missing_pacman_packages
+        owner: root
+        group: root
+        mode: '0755'
+      tags:
+        - install_check_missing_pacman_packages
+
+    - name: Build list of missing Pacman packages
+      # The lookup builds a list of candidate packages from file, only missing ones are returned:
+      ansible.builtin.command: check_missing_pacman_packages "{{ lookup('file', '{{ customvar_pacman_file }}') }}"
+      register: pacman_missing_list
+      changed_when: pacman_missing_list.rc != 0
+      tags:
+        - build_pacman_missing_list
+
+    - name: Install missing Pacman packages
+      # Invoke pacman for each package marked missing from build_pacman_missing_list
+      community.general.pacman:
+        name: "{{ item }}"
+        state: present
+        reason: explicit
+        reason_for: all
+      loop: "{{ pacman_missing_list.stdout_lines }}"
+      become: true
+      tags:
+        - pacman_install_missing_packages
+
+    - name: Build list of missing AUR packages
+      # check_missing_pacman_packages works for packages installed by yay too:
+      ansible.builtin.command: check_missing_pacman_packages "{{ lookup('file', '{{ customvar_aur_file }}') }}"
+      register: aur_missing_list
+      changed_when: aur_missing_list.rc != 0
+      tags:
+        - build_aur_missing_list
+
+    # make sure to install yay on host before using this:
+    - name: Install missing AUR packages
+      yay:
+        name: "{{ item }} state=present"
+      loop: "{{ aur_missing_list.stdout_lines }}"
+      become: true
+      tags:
+        - aur_install_missing_packages
+
+    # Runs the equivalent of "pacman -S --asexplicit", mark foo as explicit and install it if not present
+    - name: Install Pacman packages
+      tags:
+        - pacman_install_packages
+      loop: "{{ lookup('file', '{{ customvar_pacman_file }}' ).split('\n') }}"
+      community.general.pacman:
+        name: "{{ item }}"
+        state: present
+        reason: explicit
+        reason_for: all
+
+    - name: Install AUR packages
+      yay:
+        name: "{{ item }} state=present"
+      loop: "{{ lookup('file', '{{ customvar_aur_file }}' ).split('\n') }}"
+      register: aur_out
+      become: true
+      tags:
+        - aur_install_packages
+
+    - name: Write UDEV rules 80-logitech-k400.rules
+      ansible.builtin.template:
+        src: ../assets/80-logitech-k400.rules
+        dest: /etc/udev/rules.d/80-logitech-k400.rules
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - k400_udev_rules
+
+    - name: Check cpupower settings
+      ansible.builtin.replace:
+        path: /etc/default/cpupower
+        regexp: "^#governor='ondemand'"
+        replace: "governor='{{ customvar_cpupower_mode | default('schedutil', true) }}'"
+      tags:
+        - cpupower_settings
+
+    - name: Make sure a cpupower unit is running
+      ansible.builtin.systemd_service:
+        enabled: true
+        daemon_reload: true
+        state: started
+        name: cpupower
+      tags:
+        - systemd_started_cpupower
+
+    - name: Xdg-terminal
+      ansible.builtin.template:
+        src: ../assets/xdg-terminal-exec
+        dest: /usr/bin/xdg-terminal-exec
+        owner: root
+        group: root
+        mode: '0755'
+      tags:
+        - install_xdg_terminal_exec
+
+    - name: Validate gsettings terminal
+      ansible.builtin.command: gsettings get org.cinnamon.desktop.default-applications.terminal exec
+      # become: true
+      # become_user: eikeno
+      register: gs_out
+      changed_when: gs_out.rc != 0
+      tags:
+        - gsettings_terminal_validate
+
+    - name: Gsettings set terminal
+      ansible.builtin.command: gsettings set org.cinnamon.desktop.default-applications.terminal exec "/usr/bin/kitty"
+      # become: true
+      # become_user: eikeno
+      changed_when: gs_out.rc != 0
+      tags:
+        - gsettings_terminal
+
+    - name: Gestting set terminal debug
+      ansible.builtin.debug:
+        msg: "{{ gs_out }}"
+      tags:
+        - gsettings_terminal_debug
+
+    - name: Validate gsettings set terminal args
+      ansible.builtin.command: gsettings get org.cinnamon.desktop.default-applications.terminal exec-arg
+      # become: true
+      # become_user: eikeno
+      register: gsta_out
+      changed_when: gsta_out.rc != 0
+      tags:
+        - gsettings_terminal_args_validate
+
+    - name: Gsettings set terminal args
+      ansible.builtin.command: gsettings set org.cinnamon.desktop.default-applications.terminal exec-arg '--hold bash -c'
+      # become: true
+      # become_user: eikeno
+      changed_when: gsta_out.rc != 0
+      tags:
+        - gsettings_terminal_args
+
+    - name: Gsettings set terminal args debug
+      ansible.builtin.debug:
+        msg: "{{ gsta_out }}"
+      tags:
+        - gsettings_terminal_args_debug
+
+    - name: Vscode symlink
+      ansible.builtin.file:
+        src: /usr/bin/code
+        dest: /usr/bin/vscode
+        state: link
+        force: false
+      tags:
+        - vscode_symlink
+
+    - name: Validate install_go_packages
+      ansible.builtin.command: go version
+      # become: true
+      # become_user: eikeno
+      register: go_out
+      changed_when: go_out.rc != 0
+      tags:
+        - validate_install_go_packages
+
+    # LSP for Hyprland. Install Hyprland extensions package in VScode to use it
+    - name: Install go packages
+      # ansible.builtin.command: go install github.com/ewen-lbh/hyprls/cmd/hyprls@latest
+      ansible.builtin.command: go install github.com/hyprland-community/hyprls/cmd/hyprls@latest
+      changed_when: go_out.rc != 0
+      tags:
+        - install_go_packages
+
+    - name: Install go packages debug
+      ansible.builtin.debug:
+        msg: "{{ go_out }}"
+      tags:
+        - install_go_packages_debug
+
+    - name: Xterm-kitty symlink
+      ansible.builtin.file:
+        src: /usr/bin/kitty
+        dest: /usr/bin/xterm-kitty
+        state: link
+        force: true
+      tags:
+        - xterm_kitty_link
+
+    - name: Create SDDM configuration directory
+      ansible.builtin.file:
+        path: /etc/sddm.conf.d
+        state: directory
+        mode: '0755'
+      tags:
+        - create_sddm_config_dir
+
+    - name: Install SDDM configuration file
+      ansible.builtin.copy:
+        src: ../assets/sddm/sddm.conf
+        dest: /etc/sddm.conf.d/sddm.conf
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - install_sddm_config_file
+
+    - name: Install SDDM face icon
+      ansible.builtin.copy:
+        src: ../assets/sddm/eikeno.face.icon
+        dest: /usr/share/sddm/faces/eikeno.face.icon
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - install_sddm_face_icon
+
+    # not included on git due to copyrights in some files
+    - name: Install sddm_eikeno theme
+      ansible.builtin.copy:
+        src: ../assets/sddm-eikeno
+        dest: /usr/share/sddm/themes/
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - install_sddm_eikeno_theme
+
+    - name: Install SSH agent unit file
+      ansible.builtin.copy:
+        src: ../assets/ssh-agent.service
+        dest: /usr/lib/systemd/system/ssh-agent.service
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - install_ssh_agent_unit_file
+
+    - name: Write bridge.conf for qemu
+      ansible.builtin.template:
+        src: ../assets/etc_qemu_bridge.conf
+        dest: /etc/qemu/bridge.conf
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - qemu_bridge_conf
+
+    - name: Write qemu.conf for libvirt
+      ansible.builtin.template:
+        src: ../assets/etc_libvirt_qemu.conf
+        dest: /etc/libvirt/qemu.conf
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - libvirt_qemu_conf
+
+    - name: Write libvirt qemu default netwwork
+      ansible.builtin.template:
+        src: ../assets/etc_libvirt_qemu_networks_default.xml
+        dest: /etc/libvirt/qemu/networks
+        owner: root
+        group: root
+        mode: '0600'
+      tags:
+        - libvirt_qemu_default_network
+
+    - name: Make sure libvirt unit is running
+      ansible.builtin.systemd_service:
+        state: started
+        name: libvirtd
+      tags:
+        - systemd_started_libvirtd
+
+    - name: Set libvirt auth unix ro to polkit
+      ansible.builtin.lineinfile:
+        dest: /etc/libvirt/libvirtd.conf
+        line: 'auth_unix_ro = "polkit"'
+        state: present
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - libvirtd_auth_unix_ro
+
+    - name: Set libvirt auth unix rw to polkit
+      ansible.builtin.lineinfile:
+        dest: /etc/libvirt/libvirtd.conf
+        line: 'auth_unix_rw = "polkit"'
+        state: present
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - libvirtd_auth_unix_rw
+
+    # make sure capsimage AUR is installed before running this
+    # depends=('sdl2' 'libpng' 'portaudio' 'systemd-libs' 'hicolor-icon-theme' 'capsimage')
+    - name: Install hatari
+      ansible.builtin.script: ../assets/install_hatari-enhanced.sh
+      become: true
+      become_user: eikeno
+      tags:
+        - install_hatari
+      args:
+        creates: /usr/bin/hatari

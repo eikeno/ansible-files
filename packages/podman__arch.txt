@@ -1,0 +1,5 @@
+podman
+containers-common
+qemu-user-static
+qemu-user-static-binfmt
+podman-compose

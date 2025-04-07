@@ -1,0 +1,41 @@
+# code: language=ansible
+- name: Playbook for podman related tasks
+  hosts: archhosts
+  become: true
+  gather_facts: false
+  tasks:
+
+    - name: Install podman
+      # Invoke pacman for each package listed
+      community.general.pacman:
+        name: "{{ item }}"
+        state: present
+        reason: explicit
+        reason_for: all
+      loop: "{{ lookup('file', '../packages/podman__arch.txt').split('\n') }}"
+      become: true
+      tags:
+        - install_podman
+
+    - name: Configure registries.conf
+      ansible.builtin.lineinfile:
+        path: /etc/containers/registries.conf
+        line: unqualified-search-registries = ["docker.io"]
+        state: "present"
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - configure_registries_conf
+
+    - name: Configure sysctl userns
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.d/10-podman.conf
+        line: kernel.unprivileged_userns_clone = 1
+        state: "present"
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - configure_sysctl_userns

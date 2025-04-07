@@ -1,0 +1,32 @@
+# code: language=ansible
+- name: Playbook for hosts using advanced Ndeovim setup
+  hosts: adavanced_nvim_hosts
+  become: true
+  gather_facts: true
+  tasks:
+
+    - name: "Print facts"
+      ansible.builtin.debug:
+        var: ansible_facts
+      tags:
+        - get_facts
+
+    - name: Run the equivalent of "pacman -S --asexplicit", mark foo as explicit and install it if not present
+      tags:
+        - pacman_install_packages
+      loop: "{{ lookup('file', './packages/pacman_pkgs_adavanced_nvim_hosts.txt' ).split('\n') }}"
+      community.general.pacman:
+        name: "{{ item }}"
+        state: present
+        reason: explicit
+        reason_for: all
+
+    - name: Install AUR packages
+      yay:
+        name: "{{ item }}"
+        state: present
+        ansible.builtin.debug: msg={{ aur_out.stdout }}
+      loop: "{{ lookup('file', './packages/aur_pkgs_adavanced_nvim_hosts.txt' ).split('\n') }}"
+      register: aur_out
+      tags:
+        - aur_install_packages

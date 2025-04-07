@@ -1,0 +1,1 @@
+KERNELS=="0003:046D:404D.0009", DRIVERS=="logitech-hidpp-device", MODE="0666"

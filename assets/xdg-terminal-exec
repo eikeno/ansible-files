@@ -1,0 +1,3 @@
+#!/bin/bash
+unset BASHRC_IS_SOURCED BASHRC_MINE_IS_SOURCED BASHRC_MINE_LOCAL_IS_SOURCED
+kitty --config "${HOME}/.config/kitty/kitty.conf" $@

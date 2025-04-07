@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# $@ : list of Pacman or AUR packages to check for presence. If present, silent the package, else report
+# on stdout
+# FIXME: use mktemp here:
+echo "$@" > /tmp/debug
+errcode=0
+
+echo -e "$@" | grep -v ^$ | while read -r pkg; do
+	if ! pacman -Qi "$pkg" &>/dev/null; then
+	       echo "$pkg"
+	       errcode+=1
+	fi
+done
+
+exit $errcode

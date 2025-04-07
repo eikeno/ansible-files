@@ -1,0 +1,7 @@
+cpupower-gui
+hyprpolkitagent
+hyprshot
+extension-manager
+waypipe
+wlogout
+luminance
