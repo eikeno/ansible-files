@@ -348,3 +348,13 @@
         - install_hatari
       args:
         creates: /usr/bin/hatari
+
+    - name: Install udev usb controller rules
+      ansible.builtin.template:
+        src: ../assets/90-usb-controller.rules
+        dest: /etc/udev/rules.d/90-usb-controller.rules
+        owner: root
+        group: root
+        mode: '0744'
+      tags:
+        - install_udev_usb_controller_rules

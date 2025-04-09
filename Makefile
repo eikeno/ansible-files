@@ -35,7 +35,8 @@ libvirt_qemu_default_network \
 systemd_started_libvirtd \
 libvirtd_auth_unix_ro \
 libvirtd_auth_unix_rw \
-install_hatari"
+install_hatari \
+install_udev_usb_controller_rules"
 
 ARCH_UPDATE_TAGS := `echo $(ARCH_UPDATE_TAGS_STR) | sed 's/ /,/g'`
 
@@ -58,7 +59,8 @@ gsettings_terminal_args_validate \
 gsettings_terminal_args \
 validate_install_go_packages \
 xterm_kitty_link \
-install_ssh_agent_unit_file"
+install_ssh_agent_unit_file \
+install_udev_usb_controller_rules"
 
 VIVO_ARCH_UPDATE_TAGS := `echo $(VIVO_UPDATE_TAGS_STR)  | sed 's/ /,/g'`
 

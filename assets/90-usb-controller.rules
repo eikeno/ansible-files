@@ -1,0 +1,2 @@
+KERNEL=="js[0-9]", ENV{ID_BUS}=="bluetooth", SUBSYSTEM=="input", MODE="0664", TAG+="uaccess", SYMLINK+="input/by-id/$env{ID_BUS}-controller-%n-joystick"
+KERNEL=="event[0-9]*", ENV{ID_BUS}=="bluetooth", SUBSYSTEM=="input", MODE="0664", TAG+="uaccess", SYMLINK+="input/by-id/$env{ID_BUS}-controller-%n-event-joystick"
