@@ -39,6 +39,8 @@ install_hatari \
 install_udev_usb_controller_rules"
 
 ARCH_UPDATE_TAGS := `echo $(ARCH_UPDATE_TAGS_STR) | sed 's/ /,/g'`
+NAS_UPDATE_TAGS := `echo $(ARCH_UPDATE_TAGS_STR) | sed 's/ /,/g' | sed 's/install_hatari,//'`
+
 
 VIVO_UPDATE_TAGS_STR = "get_facts \
 hosts_file \
@@ -102,18 +104,18 @@ generate_packages_lists:
 	@( pushd packages; bash ./generate.sh; popd )
 
 update_archl: generate_packages_lists
-	ansible-playbook -i inventory $(VAULT)  --ask-become-pass  			-t $(ARCH_UPDATE_TAGS)     --limit archl  -v $(PBMGMT_HOSTS)
+	ansible-playbook -i inventory $(VAULT)  --ask-become-pass  			-t $(ARCH_UPDATE_TAGS)     --limit archl -v $(PBMGMT_HOSTS)
 
 update_archmac_lan_clg: generate_packages_lists
 	ansible-playbook -i inventory $(VAULT) --ask-become-pass 		    -t $(MAC_ARCH_UPDATE_TAGS) --limit archmac_lan_clg -v $(PBMGMT_HOSTS)
 
 update_archnas_lan_clg: generate_packages_lists
-	ansible-playbook -i inventory $(VAULT) --ask-become-pass $(VAULT)   -t $(ARCH_UPDATE_TAGS)     --limit archnas_lan -v $(PBMGMT_HOSTS)
+	ansible-playbook -i inventory $(VAULT) --ask-become-pass $(VAULT)   -t $(NAS_UPDATE_TAGS)     --limit archnas_lan -v $(PBMGMT_HOSTS)
 
 update_archmsi_lan_spa: generate_packages_lists
 	ansible-playbook -i inventory $(VAULT)                    		    -t $(ARCH_UPDATE_TAGS)     --limit archmsi_lan_spa -v $(PBMGMT_HOSTS)
 
-podman_archmsi_lan_spa:
+podman_archmsi_lan_spa: generate_packages_lists
 	ansible-playbook -i inventory $(VAULT)                                              			--limit archmsi_lan_spa -v $(PBMGMT_PODMAN)
 
 update_vivo_lan_clg: generate_packages_lists

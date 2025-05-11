@@ -79,6 +79,9 @@ lsof
 mangohud
 meld
 mesa-utils
+opencl-rusticl-mesa
+lib32-mesa-utils
+lib32-opencl-rusticl-mesa
 meson
 mokutil
 mplayer
@@ -97,11 +100,33 @@ nfs-utils
 nmap
 nushell
 {% if env('ANSIBLE_HOST_GPU_DRIVER') == 'nvidia' %}
+lib32-vulkan-virtio
+lib32-vulkan-validation-layers
+lib32-vulkan-utility-libraries
+lib32-vulkan-mesa-layers
+lib32-vulkan-icd-loader
+lib32-vulkan-dzn
+lib32-vulkan-swrast
+lib32-vkd3d
+lib32-nvidia-utils
+lib32-vulkan-intel
+vulkan-virtio
+vulkan-utility-libraries
+vulkan-mesa-layers
+vulkan-intel
+vulkan-tools
+vulkan-extra-tools
+vulkan-extra-layers
+volk
+glad
+mesa
+libva-nvidia-driver
 nvidia-settings
 nvitop
-vulkan-tools
-libva-nvidia-driver
 cuda
+lib32-opencl-nvidia
+lib32-vulkan-nouveau
+lib32-nvidia-cg-toolkit
 {% endif %}
 {% if env('ANSIBLE_HOST_GPU_DRIVER') == 'amd' %}
 mesa
@@ -151,6 +176,12 @@ qt5-quickcontrols2
 qt5-graphicaleffects
 qt5-svg
 sdl2_ttf
+lib32-sdl2_image
+lib32-sdl2_mixer
+lib32-sdl2_ttf
+lib32-sdl2-compat
+lib32-sdl3
+lib32-sdl12-compat
 sdparm
 shellcheck
 slurp
@@ -191,6 +222,7 @@ whois
 wine
 wine-gecko
 wine-mono
+wine-nine
 wireless_tools
 wireplumber
 wireshark-qt
@@ -316,7 +348,6 @@ qmc2
 xdg-desktop-portal-wlr
 yt-dlp
 retroarch
-xfce4
 hunspell-fr
 hunspell-en_gb
 hunspell-en_us
@@ -329,3 +360,6 @@ fwupd
 system-config-printer
 ollama
 flips
+gtk-engine-murrine
+gtk-engines
+gtk-engine-equinox

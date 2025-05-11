@@ -1,8 +1,4 @@
 cpupower-gui
-dotnet-host-bin
-dotnet-runtime-bin
-dotnet-sdk-bin
-dotnet-targeting-pack-bin
 flycast
 gamescope-git
 iat
@@ -23,7 +19,7 @@ ryujinx
 game-devices-udev
 duckstation-git
 pcsx2-latest-bin
-ppsspp-git
+ppsspp
 rpcs3-latest-bin
 cemu
 sudachi-bin
