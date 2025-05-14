@@ -1,0 +1,133 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for docker deployment on arch systems.
+
+- name: Run whoami on target without become.
+  command: whoami
+  become: false
+  register: whoami
+
+- name: Run `id -u' on target without become.
+  command: id -u
+  become: false
+  register: myuid
+
+- name: Set a fact with the target user name.
+  set_fact:
+    login_user: "{{ whoami.stdout }}"
+
+- name: Install docker packages
+  community.general.pacman:
+    name:
+      - docker
+      - docker-buildx
+      - docker-compose
+    state: present
+    reason: explicit
+    reason_for: all
+  become: true
+
+- name: Configure /etc/subuid to allow docker user remapping
+  ansible.builtin.lineinfile:
+    dest: /etc/subuid
+    line: '{{login_user}}:100000:65536'
+    state: present
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Configure /etc/subgid to allow docker group remapping
+  ansible.builtin.lineinfile:
+    dest: /etc/subgid
+    line: '{{login_user}}:100000:65536'
+    state: present
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+# rootless mode not used here, needs extra steps and config.
+- name: Configure environment for docker
+  ansible.builtin.lineinfile:
+    dest: /etc/environment
+    line: 'DOCKER_HOST=unix:///run/docker.sock'
+    state: present
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: ensure /etc/docker directory exists
+  file:
+    path: /etc/docker
+    recurse: true
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Install daemon.json file
+  ansible.builtin.template:
+    src: "{{ role_path }}/files/daemon.json"
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+# By default, Docker cannot use the native overlay diff engine on Arch Linux, which makes building Docker images
+# slow. If you frequently build images, configure the native diff engine.
+# Source: https://wiki.archlinux.org/title/Docker
+- name: Enable native overlay diff engine
+  ansible.builtin.lineinfile:
+    dest: /etc/modprobe.d/disable-overlay-redirect-dir.conf
+    line: 'options overlay metacopy=off redirect_dir=off'
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Install "docker compose on boot" template unit file
+  ansible.builtin.template:
+    src: "{{ role_path }}/files/docker-compose@.service"
+    dest: /etc/systemd/system/docker-compose@.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+## Then, for each service you would like to run, set up a directory with the Compose file and any other required file
+## (such as .env files) at /opt/project_name.
+## Then, enable/start docker-compose@project_name.service.
+
+- name: Make sure docker unit is enabled and running
+  ansible.builtin.systemd_service:
+    state: started
+    name: docker
+  become: true
+
+# Should already be enabled on 'linux' kernel, but check anyway:
+- name: Configure sysctl userns
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.d/10-docker.conf
+    line: kernel.unprivileged_userns_clone = 1
+    state: "present"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Apply sysctl settings
+  command: sysctl -p /etc/sysctl.d/10-docker.conf
+  become: true
+
+- name: Make sure docker unit is enabled and running
+  ansible.builtin.systemd_service:
+    state: started
+    enabled: true
+    name: docker
+  become: true

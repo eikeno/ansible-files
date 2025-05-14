@@ -2,8 +2,13 @@ PBMGMT_HOSTS  = "playbooks/playbook_manage_hosts.yaml"
 PBMGMT_PODMAN = "playbooks/playbook_podman.yaml"
 PBMGMT_CLD = "playbooks/playbook_cloudhosts.yaml"
 
+# role based:
+PBMGMT_DOCKER = "playbooks/playbook_docker.yaml"
+
+# secrets
 VAULT = --vault-password-file vaultpass
 
+# other tasks sets
 ARCH_UPDATE_TAGS_STR = "get_facts \
 hosts_file \
 sudo_conf \
@@ -123,6 +128,9 @@ update_vivo_lan_clg: generate_packages_lists
 
 update_siteperso:
 	ansible-playbook -i inventory $(VAULT) --ask-become-pass  -v $(PBMGMT_CLD)
+
+apply_role_docker:
+	ansible-playbook -i inventory $(VAULT) --ask-become-pass  -v $(PBMGMT_DOCKER)
 
 test:
 	@echo $(ARCH_UPDATE_TAGS)
