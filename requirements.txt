@@ -60,7 +60,7 @@ resolvelib==1.0.1
 rich==13.9.4
 rpds-py==0.22.3
 ruamel.yaml==0.18.10
-setuptools==75.8.0
+setuptools==78.1.1
 subprocess-tee==0.4.2
 tox==4.24.1
 tox-ansible==25.1.0
