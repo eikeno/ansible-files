@@ -1,0 +1,6 @@
+# code: language=ansible
+---
+- name: Playbook for installing minimal arch hosts
+  hosts: archbasehosts
+  roles:
+    - arch-base

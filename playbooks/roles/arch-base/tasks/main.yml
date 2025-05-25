@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for arch-base
+
+- name: Run whoami on target without become.
+  ansible.builtin.command: whoami
+  become: false
+  register: whoami
+  changed_when: whoami.rc != 0
+
+- name: Run `id -u' on target without become.
+  ansible.builtin.command: id -u
+  become: false
+  register: myuid
+  changed_when: myuid.rc != 0
+
+- name: Set a fact with the target user name.
+  ansible.builtin.set_fact:
+    login_user: "{{ whoami.stdout }}"
+
+- name: Set a fact with the target remote user name.
+  ansible.builtin.set_fact:
+    rlogin_user: "{{ whoami.stdout }}"
+  become: true
+
+- name: Update pacman packages
+  community.general.pacman:
+    update_cache: true
+    upgrade: true
+  become: true
+
+- name: Install needed Pacman packages
+  community.general.pacman:
+    name: "{{ item }}"
+    state: present
+    reason: explicit
+    reason_for: all
+  loop: "{{ lookup('file', '{{ role_path }}/files/packages.txt').splitlines() }}"
+  become: true
+
+- name: Ensure user's ~/.local/bin directory exists
+  ansible.builtin.file:
+    path: "/home/{{ login_user }}/.local/bin"
+    recurse: true
+    state: directory
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0755"
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Install yay installer script
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/install_yay.sh"
+    dest: "/home/{{ login_user }}/.local/bin/install_yay.sh"
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0755"
+  become: true
+
+- name: Install user level zshrc file if doesn't exist
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/zshrc.txt"
+    dest: "/home/{{ login_user }}/.zshrc"
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0640"
+    force: false
+  environment:
+    CHSH: "yes"
+  become: true
+
+- name: Install user level oh-my-zsh installer script
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
+    dest: "/home/{{ login_user }}/.local/bin/install_ohmyzsh.sh"
+    mode: "0755"
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Switch user shell to zsh
+  ansible.builtin.command: "chsh -s /bin/zsh {{ login_user }}"
+  become: true
+  register: switch_shell
+  changed_when: switch_shell.rc != 0
+
+- name: Install user level oh-my-zsh
+  ansible.builtin.command: "sh /home/{{ login_user }}/.local/bin/install_ohmyzsh.sh --unattended --keep-zshrc"
+  become: true
+  become_user: "{{ login_user }}"
+  changed_when: true

@@ -1,0 +1,5 @@
+# code: language=ansible
+---
+- hosts: rootlessdockerhosts
+  roles:
+    - docker-rootless

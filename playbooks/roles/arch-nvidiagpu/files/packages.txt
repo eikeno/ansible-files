@@ -1,0 +1,17 @@
+cuda
+ffnvcodec-headers
+gamescope-nvidia-git
+lib32-nvidia-cg-toolkit
+lib32-nvidia-utils
+lib32-opencl-nvidia
+lib32-opencl-rusticl-mesa
+lib32-vulkan-nouveau
+lib32-vulkan-swrastcuda
+libva-nvidia-driver
+nvidia-open-dkms
+nvidia-settings
+nvidia-utils
+nvitop
+opencl-nvidia
+python-nvidia-ml-py
+python-pynvml

@@ -1,0 +1,7 @@
+# code: language=ansible
+---
+- name: Playbook for installing predifined list of packages on arch hosts
+  hosts: archbasehosts
+  roles:
+    - arch-system
+    - arch-gpucommon

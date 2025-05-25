@@ -1,0 +1,13 @@
+balena-etcher
+bchunk
+cdrdao
+chromium
+firefox
+ghostwriter
+gpu-screen-recorder
+libreoffice-fresh
+libreoffice-fresh-fr
+localsend-appimage
+microsoft-edge-stable-bins
+sunshine-git
+wkhtmltopdf

@@ -1,0 +1,3 @@
+vulkan-nouveau
+lib32-vulkan-nouveau
+gamescope

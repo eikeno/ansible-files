@@ -1,0 +1,11 @@
+[Unit]
+Description=Moin
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/storage/PNY_1TB/HOMELAB/systemd_apps/moin2/start_moin.sh
+TimeoutStopSec=5
+
+[Install]
+WantedBy=default.target

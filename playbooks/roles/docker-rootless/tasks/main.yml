@@ -1,0 +1,244 @@
+---
+# tasks file for docker-rootless
+
+# refs https://codestrian.com/index.php/2023/03/29/expose-rootless-docker-api-socket-via-tcp-with-ssl/
+# https://rootlesscontaine.rs/getting-started/docker/#changing-the-port-forwarder
+
+- name: Run whoami on target without become.
+  ansible.builtin.command: whoami
+  become: false
+  register: whoami
+  changed_when: whoami.rc != 0
+
+- name: Run `id -u' on target without become.
+  ansible.builtin.command: id -u
+  become: false
+  register: myuid
+  changed_when: myuid.rc != 0
+
+- name: Set a fact with the target user name.
+  ansible.builtin.set_fact:
+    login_user: "{{ whoami.stdout }}"
+
+- name: Set a fact with the target remote user name.
+  ansible.builtin.set_fact:
+    rlogin_user: "{{ whoami.stdout }}"
+  become: true
+
+# By default, Docker cannot use the native overlay diff engine on Arch Linux, which makes building Docker images
+# slow. If you frequently build images, configure the native diff engine.
+# Source: https://wiki.archlinux.org/title/Docker
+- name: Enable native overlay diff engine
+  ansible.builtin.lineinfile:
+    dest: /etc/modprobe.d/disable-overlay-redirect-dir.conf
+    line: 'options overlay metacopy=off redirect_dir=off'
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Install docker prereauisites
+  community.general.pacman:
+    name:
+      - fuse-overlayfs
+      - slirp4netns
+    state: present
+    reason: explicit
+    reason_for: all
+  become: true
+
+- name: Configure /etc/subuid to allow docker user remapping
+  ansible.builtin.lineinfile:
+    dest: /etc/subuid
+    line: '{{ login_user }}:100001:65536'
+    state: present
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Configure /etc/subgid to allow docker group remapping
+  ansible.builtin.lineinfile:
+    dest: /etc/subgid
+    line: '{{ login_user }}:100001:65536'
+    state: present
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Configure sysctl for kernel.unprivileged_userns_clone
+  ansible.builtin.lineinfile:
+    dest: /etc/sysctl.d/10-unprivileged_userns_clone.conf
+    line: 'kernel.unprivileged_userns_clone=1'
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Configure sysctl for net.ipv4.ping_group_range
+  ansible.builtin.lineinfile:
+    dest: /etc/sysctl.d/10-ping_group_range.conf
+    line: 'net.ipv4.ping_group_range = 0	2147483647'
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Configure sysctl for net.ipv4.ip_unprivileged_port_start
+  ansible.builtin.lineinfile:
+    dest: /etc/sysctl.d/10-ip_unprivileged_port_start.conf
+    line: 'net.ipv4.ip_unprivileged_port_start=0'
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl --system
+  become: true
+  register: apply_sysctl
+  changed_when: apply_sysctl.rc != 0
+
+- name: Loginctl settings for user
+  ansible.builtin.command: "loginctl enable-linger {{ login_user }}"
+  become: true
+  register: apply_linger
+  changed_when: apply_linger.rc != 0
+
+- name: Get docker-rootless install script
+  ansible.builtin.get_url:
+    url: https://get.docker.com/rootless
+    dest: "/home/{{ login_user }}/bin/install_rootless_docker.sh"
+    mode: '0755'
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Install docker-rootless via script
+  ansible.builtin.command: "/home/{{ login_user }}/bin/install_rootless_docker.sh"
+  register: script_run
+  changed_when: script_run.rc != 0
+
+- name: Ensure systemd override directory exists
+  ansible.builtin.file:
+    path: "/home/{{ login_user }}/.config/systemd/user/docker.service.d"
+    recurse: true
+    state: directory
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0755"
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Enable systemd override file
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/override.conf"
+    dest: "/home/{{ login_user }}/.config/systemd/user/docker.service.d/override.conf"
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0644"
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Ensure ~/.config/systemd/docker directory exists
+  ansible.builtin.file:
+    path: "/home/{{ login_user }}/.config/systemd/docker"
+    recurse: true
+    state: directory
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0755"
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Install TCP aware docker.service file
+  ansible.builtin.template:
+    src: "{{ role_path }}/files/docker.service.j2"
+    dest: "/home/{{ login_user }}/.config/systemd/user/docker.service"
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: '0644'
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Enable TCP socket
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/daemon.json"
+    dest: "/home/{{ login_user }}/.config/systemd/docker/daemon.json"
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0644"
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Configure user's shell PATH
+  ansible.builtin.lineinfile:
+    path: "/home/{{ login_user }}/.zshrc.mine"
+    line: 'export PATH="$PATH:$HOME/bin"'
+    state: present
+    create: true
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: '0644'
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Ensure cli-plugins directory exists
+  ansible.builtin.file:
+    path: "/home/{{ login_user }}/.docker/cli-plugins"
+    recurse: true
+    state: directory
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: '0755'
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Donwload docker-compose plugin
+  ansible.builtin.get_url:
+    url: "https://github.com/docker/compose/releases/download/v2.36.0/docker-compose-linux-x86_64"
+    dest: "/home/{{ login_user }}/.docker/cli-plugins/docker-compose"
+    mode: '0755'
+  become: true
+  become_user: "{{ login_user }}"
+  register: get_compose
+  changed_when: script_run.rc != 0
+
+- name: Get fact for docker compose version
+  ansible.builtin.command: docker compose version
+  environment:
+    PATH: "/home/{{ login_user }}/bin:$PATH"
+    XDG_RUNTIME_DIR: "/run/user/{{ myuid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ myuid }}/bus"
+  become: true
+  become_user: "{{ login_user }}"
+  register: get_fact_compose
+  changed_when: get_fact_compose.rc != 0
+
+- name: Install context file for use with TCP
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/context.sh"
+    dest: "/home/{{ login_user }}/bin/tcp_context.sh"
+    owner: "{{ login_user }}"
+    group: "{{ login_user }}"
+    mode: "0755"
+  become: true
+  become_user: "{{ login_user }}"
+
+- name: Switch rootless context to use TCP socket
+  ansible.builtin.command: tcp_context.sh
+  environment:
+    PATH: "/home/{{ login_user }}/bin:$PATH"
+    XDG_RUNTIME_DIR: "/run/user/{{ myuid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ myuid }}/bus"
+  become: true
+  become_user: "{{ login_user }}"
+

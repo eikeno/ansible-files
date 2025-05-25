@@ -29,8 +29,8 @@
 
 - name: Configure /etc/subuid to allow docker user remapping
   ansible.builtin.lineinfile:
-    dest: /etc/subuid
-    line: '{{login_user}}:100000:65536'
+    dest: "/etc/subuid"
+    line: '{{ login_user }}:100000:65536'
     state: present
     owner: root
     group: root
@@ -39,7 +39,7 @@
 
 - name: Configure /etc/subgid to allow docker group remapping
   ansible.builtin.lineinfile:
-    dest: /etc/subgid
+    dest: "/etc/subgid"
     line: '{{login_user}}:100000:65536'
     state: present
     owner: root
@@ -109,7 +109,7 @@
     name: docker
   become: true
 
-# Should already be enabled on 'linux' kernel, but check anyway:
+# Should already be enabled on regular 'linux' kernel, but check anyway:
 - name: Configure sysctl userns
   ansible.builtin.lineinfile:
     path: /etc/sysctl.d/10-docker.conf

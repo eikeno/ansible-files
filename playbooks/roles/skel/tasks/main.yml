@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for skel
+
+- name: Run whoami on target without become.
+  ansible.builtin.command: whoami
+  become: false
+  register: whoami
+  changed_when: whoami.rc != 0
+
+- name: Run `id -u' on target without become.
+  ansible.builtin.command: id -u
+  become: false
+  register: myuid
+  changed_when: myuid.rc != 0
+
+- name: Set a fact with the target user name.
+  ansible.builtin.set_fact:
+    login_user: "{{ whoami.stdout }}"
+
+- name: Set a fact with the target remote user name.
+  ansible.builtin.set_fact:
+    rlogin_user: "{{ whoami.stdout }}"
+  become: true
+
+- name: Install pacman and AUR packages
+  # ths yay wrapper is in toplevel's library location
+  yay:
+    name: "{{ item }} state=present"
+  # after creation add packages in files/packages.txt  one pgg per line
+  loop: "{{ lookup('file', '{{ arch_packages_file }}' ).split('\n') }}"
+  become: true
+  register: installation_results
+  changed_when: switch_context_tcp.rc != 0

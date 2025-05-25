@@ -1,9 +1,13 @@
 PBMGMT_HOSTS  = "playbooks/playbook_manage_hosts.yaml"
 PBMGMT_PODMAN = "playbooks/playbook_podman.yaml"
 PBMGMT_CLD = "playbooks/playbook_cloudhosts.yaml"
+PBMGMT_HOMELAB = "playbooks/playbook_homelab.yaml"
 
 # role based:
 PBMGMT_DOCKER = "playbooks/playbook_docker.yaml"
+PBMGMT_DOCKER_ROOTLESS = "playbooks/playbook_docker_rootless.yaml"
+PBMGMT_ARCH_BASE = "playbooks/playbook_arch_base.yaml"
+PBMGMT_ARCH_PACKAGES = "playbooks/playbook_arch_packages.yaml"
 
 # secrets
 VAULT = --vault-password-file vaultpass
@@ -124,13 +128,25 @@ podman_archmsi_lan_spa: generate_packages_lists
 	ansible-playbook -i inventory $(VAULT)                                              			--limit archmsi_lan_spa -v $(PBMGMT_PODMAN)
 
 update_vivo_lan_clg: generate_packages_lists
-	ansible-playbook -i inventory $(VAULT)                               -t $(VIVO_ARCH_UPDATE_TAGS) --limit archvivo_lan_clg -v $(PBMGMT_HOSTS)
+	ansible-playbook -i inventory $(VAULT)                              -t $(VIVO_ARCH_UPDATE_TAGS) --limit archvivo_lan_clg -v $(PBMGMT_HOSTS)
 
 update_siteperso:
 	ansible-playbook -i inventory $(VAULT) --ask-become-pass  -v $(PBMGMT_CLD)
 
 apply_role_docker:
 	ansible-playbook -i inventory $(VAULT) --ask-become-pass  -v $(PBMGMT_DOCKER)
+
+apply_role_rootless_docker:
+	ansible-playbook -i inventory $(VAULT) --ask-become-pass  --limit archnas_lan -e ruser=`whoami` -v $(PBMGMT_DOCKER_ROOTLESS)
+
+apply_role_arch_all_packages:
+	ansible-playbook -i inventory $(VAULT) --ask-become-pass  --limit archmsi_lan_spa -e ruser=`whoami` -v $(PBMGMT_ARCH_PACKAGES)
+
+homelab:
+	ansible-playbook -i inventory $(VAULT) --ask-become-pass  -v $(PBMGMT_HOMELAB)
+
+arch_base:
+	ansible-playbook -i inventory $(VAULT) --ask-become-pass  -v $(PBMGMT_ARCH_BASE)
 
 test:
 	@echo $(ARCH_UPDATE_TAGS)

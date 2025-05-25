@@ -1,0 +1,46 @@
+# code: language=ansible
+- name: Playbook for my hosts
+  hosts: homelab
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: "Print facts"
+      ansible.builtin.debug:
+        var: ansible_facts
+
+    #####################
+    # Moin2 (wiki       #
+    #####################
+    - name: ensure user systemd directory exists
+      file:
+          path: /home/eikeno/.config/systemd/user/
+          recurse: true
+          state: directory
+          owner: eikeno
+          group: eikeno
+          mode: "0755"
+      become: true
+
+    - name: Install moin unit
+      ansible.builtin.template:
+        src: ../assets/nas/moin.service
+        dest: /home/eikeno/.config/systemd/user/moin.service
+        owner: eikeno
+        group: eikeno
+        mode: "0644"
+
+    - name: Recreate virtual environment
+      ansible.builtin.command: /storage/PNY_1TB/HOMELAB/systemd_apps/moin2/rebuild_venv.sh
+      become_user: eikeno
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/1000"
+
+    - name: Make sure moin unit is enabled and running
+      ansible.builtin.systemd_service:
+        state: started
+        name: moin
+        scope: "user"
+      become_user: eikeno
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/1000"

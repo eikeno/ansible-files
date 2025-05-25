@@ -1,5 +1,13 @@
-
 {
     "userns-remap": "default",
-    "data-root": "/var/lib/docker"
+    "data-root": "/var/lib/docker",
+
+    "dns": ["172.21.0.253"],
+    "default-address-pools": [
+        {
+            "base": "172.21.0.0/16",
+            "size":24
+        }
+    ]
+
 }

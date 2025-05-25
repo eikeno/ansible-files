@@ -1,0 +1,12 @@
+virtiofsd
+virt-manager
+virtualbox
+virtualbox-guest-iso
+virtualbox-guest-utils
+virt-viewer
+qemu-full
+nushell
+dnsmasq
+wireshark-qt
+mongosh
+quickemu
