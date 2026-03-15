@@ -12,7 +12,7 @@ ansible-sign==0.1.1
 argcomplete==3.5.3
 attrs==24.3.0
 bindep==2.11.0
-black==24.10.0
+black==26.3.1
 bracex==2.5.post1
 cachetools==5.5.1
 cffi==1.17.1
